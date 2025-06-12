@@ -1,26 +1,64 @@
+@Library("shared-library") _
 pipeline{
     agent any
     options{
-        timeout(time: 10, unit: 'MINUTES')
+        timeout(time: 5, unit: 'MINUTES')
     }
     environment{
-        PROJECT_NAME = 'myFirstProjectName'
+        MT_BRANCH_NAME = 'main'
     }
     parameters {
-        booleanParam(defaultValue: "true", name: "isTrue",description:"if is true")
-    string(defaultValue: "tovi", name: "myFirstName", description: "myName" )
+        string(defaultValue: "main", name: "BRANCH_NAME", description: "name of this branch")
+        string(defaultValue: "https://github.com/TOVI15/FinalPipeline.git", name: "REPO_URL", description: "path url repository" )
     }
-    stages{
-        stage('true parameter') {
+    triggers {
+        cron('TZ=Asia/Jerusalem\n30 5 * * 1')
+        cron('TZ=Asia/Jerusalem\n0 14 * * *')
+    }
+    stages {
+        stage('checkout code') {
             when {
                 expression {
-                    return params.isTrue
+                   return params.BRANCH_NAME == env.MT_BRANCH_NAME
                 }
             }
             steps{
-                echo "my name :${ params.myFirstName}"
-            echo "my project name :${env.PROJECT_NAME}"
+                echo "checking out using Jenkins SCM for main branch"
+                checkout scm
             }
+        }
+        stage('Checkout code - Manual git') {
+            when {
+                expression {
+                   return params.BRANCH_NAME != env.MT_BRANCH_NAME
+                }
+            }
+            steps{
+                echo "checking out manually from branch: ${params.BRANCH_NAME}"
+                git pranch: "${params.BRANCH_NAME}, url: ${params.REPO_URL}"
+            }
+        }
+        stage('Compile') {
+            steps {
+                echo "Starting compilation stage"
+                sh 'mvn compile'
+                echo 'Compilation stage completed successfully'
+            }
+        }
+        stage('Run Tests') {
+            steps {
+                echo "Running test stage..."
+                sh 'mvn test'
+                echo 'Test stage completes successfully'
+            }
+        }
+    }
+    post {
+        success {
+            echo '✅ pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed. Please check the logs.'
         }
     }
 }
