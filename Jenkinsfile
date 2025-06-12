@@ -34,7 +34,7 @@ pipeline{
             }
             steps{
                 echo "checking out manually from branch: ${params.BRANCH_NAME}"
-                git branch: "${params.BRANCH_NAME}, url: ${params.REPO_URL}"
+                git branch: "${params.BRANCH_NAME}", url: "${params.REPO_URL}"
             }
         }
         stage('Compile') {
