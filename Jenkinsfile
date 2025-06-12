@@ -1,68 +1,63 @@
 @Library("sharedLib") _
-pipeline {
+pipeline{
     agent any
-
-    environment {
+    options{
+        timeout(time: 5, unit: 'MINUTES')
+    }
+    environment{
         MT_BRANCH_NAME = 'main'
-        TZ = 'Asia/Jerusalem'
     }
-
     parameters {
-        string(name: "BRANCH_NAME", defaultValue: "main", description: "Branch to build")
-        string(name: "REPO_URL", defaultValue: "https://github.com/TOVI15/FinalPipeline.git", description: "Git repository URL")
+        string(defaultValue: "main", name: "BRANCH_NAME", description: "name of this branch")
+        string(defaultValue: "https://github.com/TOVI15/FinalPipeline.git", name: "REPO_URL", description: "path url repository" )
     }
-
     triggers {
-        cron('TZ=Asia/Jerusalem\n30 5 * * 1')     // יום שני 05:30
-        cron('TZ=Asia/Jerusalem\n0 14 * * *')     // כל יום 14:00
+        cron('TZ=Asia/Jerusalem\n30 5 * * 1\n0 14 * * *')
     }
-
     stages {
-        stage('Checkout Code') {
-            steps {
-                script {
-                    def isMain = (params.BRANCH_NAME == env.MT_BRANCH_NAME)
-                    echo "Branch selected: ${params.BRANCH_NAME}"
-                    echo "Checking out ${isMain ? 'using Jenkins SCM' : 'manually'}..."
-
-                    if (isMain) {
-                        checkout scm
-                    } else {
-                        git branch: params.BRANCH_NAME, url: params.REPO_URL
-                    }
+        stage('checkout code') {
+            when {
+                expression {
+                   return params.BRANCH_NAME == env.MT_BRANCH_NAME
                 }
             }
+            steps{
+                echo "checking out using Jenkins SCM for main branch"
+                checkout scm
+            }
         }
-
+        stage('Checkout code - Manual git') {
+            when {
+                expression {
+                   return params.BRANCH_NAME != env.MT_BRANCH_NAME
+                }
+            }
+            steps{
+                echo "checking out manually from branch: ${params.BRANCH_NAME}"
+                git branch: "${params.BRANCH_NAME}, url: ${params.REPO_URL}"
+            }
+        }
         stage('Compile') {
-            options {
-                timeout(time: 5, unit: 'MINUTES')
-            }
             steps {
-                echo "🔨 Starting compilation stage..."
+                echo "Starting compilation stage"
                 sh 'mvn compile'
-                echo "✅ Compilation stage completed successfully!"
+                echo 'Compilation stage completed successfully'
             }
         }
-
         stage('Run Tests') {
-            options {
-                timeout(time: 5, unit: 'MINUTES')
-            }
             steps {
-                echo "🧪 Running test stage..."
+                echo "Running test stage..."
                 sh 'mvn test'
-                echo "✅ Test stage completed successfully!"
+                echo 'Test stage completes successfully'
             }
         }
     }
-
     post {
         success {
-            echo "✅ Pipeline completed successfully!"
+            echo '✅ pipeline completed successfully!'
         }
         failure {
-            echo "❌ Pipeline failed. Please check the logs."
+            echo '❌ Pipeline failed. Please check the logs.'
         }
     }
 }
